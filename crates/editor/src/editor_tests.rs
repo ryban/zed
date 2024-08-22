@@ -2524,6 +2524,60 @@ async fn test_tab_with_mixed_whitespace(cx: &mut gpui::TestAppContext) {
 }
 
 #[gpui::test]
+async fn test_increment_selection(cx: &mut gpui::TestAppContext) {
+    init_test(cx, |_| {});
+    let mut cx = EditorTestContext::new(cx).await;
+    // Simple case of 4 separate cursors
+    cx.set_state("ˇ ˇ ˇ ˇ");
+    cx.update_editor(|editor, cx| {
+        editor.increment_selection(&IncrementSelection, cx);
+        assert_eq!(editor.text(cx), "0 1 2 3");
+    });
+
+    // First selection is a number
+    cx.set_state("«10ˇ» a ˇ b ˇ c ˇ");
+    cx.update_editor(|editor, cx| {
+        editor.increment_selection(&IncrementSelection, cx);
+        assert_eq!(editor.text(cx), "10 a 11 b 12 c 13");
+    });
+
+    // First selection is not a number
+    cx.set_state("«fooˇ» aˇbˇcˇ");
+    cx.update_editor(|editor, cx| {
+        editor.increment_selection(&IncrementSelection, cx);
+        assert_eq!(editor.text(cx), "foo abc");
+    });
+
+    // Content of selections after the first are ignored
+    cx.set_state("«1ˇ» «abcˇ» ˇ «42ˇ»");
+    cx.update_editor(|editor, cx| {
+        editor.increment_selection(&IncrementSelection, cx);
+        assert_eq!(editor.text(cx), "1 2 3 4");
+    });
+
+    // First selection is all white space
+    cx.set_state("«\t\n ˇ» ˇ ˇ");
+    cx.update_editor(|editor, cx| {
+        editor.increment_selection(&IncrementSelection, cx);
+        assert_eq!(editor.text(cx), "0 1 2");
+    });
+
+    // Negative numbers
+    cx.set_state("«-1ˇ» ˇ ˇ");
+    cx.update_editor(|editor, cx| {
+        editor.increment_selection(&IncrementSelection, cx);
+        assert_eq!(editor.text(cx), "-1 0 1");
+    });
+
+    // Incrementing saturates
+    cx.set_state(&format!("«{}ˇ» ˇ ˇ", i128::MAX - 1));
+    cx.update_editor(|editor, cx| {
+        editor.increment_selection(&IncrementSelection, cx);
+        assert_eq!(editor.text(cx), format!("{} {} {}", i128::MAX - 1, i128::MAX, i128::MAX));
+    });
+}
+
+#[gpui::test]
 async fn test_indent_outdent(cx: &mut gpui::TestAppContext) {
     init_test(cx, |settings| {
         settings.defaults.tab_size = NonZeroU32::new(4);

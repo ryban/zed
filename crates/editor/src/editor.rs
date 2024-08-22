@@ -5621,6 +5621,50 @@ impl Editor {
         });
     }
 
+    /// Performs the same action as sublime text's "Increment Selection" command
+    /// For each cursor selection, we replace the selection with an increasing
+    /// sequence of numbers starting with the number in the first selection.
+    /// If the first selection is empty or all whitespace 0 is used as the first number.
+    /// If the first selection is not a valid number, nothing is changed.
+    /// The context of subsequent selections are ignored.
+    pub fn increment_selection(&mut self, _: &IncrementSelection, cx: &mut ViewContext<Self>) {
+        let selections = self.selections.all::<Point>(cx);
+        let buffer = self.buffer.read(cx);
+        let mut edits = Vec::new();
+        // Get the number in the first selection
+        let mut number = if let Some(first_selection) = selections.first() {
+            let snapshot = buffer.read(cx);
+            let start = snapshot.point_to_offset(first_selection.start);
+            let end = snapshot.point_to_offset(first_selection.end);
+            let s: String = snapshot.chars_at(first_selection.start).take(end - start).collect();
+            if s.is_empty() || s.chars().all(char::is_whitespace) {
+                // The first selection is either empty or all white space
+                // Sublime text would set the first number to 1 here
+                0
+            } else if let Ok(number) = s.parse::<i128>() {
+                number
+            } else {
+                return;
+            }
+        } else {
+            // There are no selections
+            return;
+        };
+
+        for selection in &selections {
+            // Replace the selection with the current number
+            edits.push((
+                selection.start..selection.end,
+                format!("{}", number),
+            ));
+            // Saturate the values instead of weapping in release or panicing in debug
+            number = number.saturating_add(1);
+        }
+        self.transact(cx, |this, cx| {
+            this.buffer.update(cx, |b, cx| b.edit(edits, None, cx));
+        });
+    }
+
     pub fn indent(&mut self, _: &Indent, cx: &mut ViewContext<Self>) {
         if self.read_only(cx) {
             return;

@@ -234,6 +234,7 @@ gpui::actions!(
         HalfPageDown,
         HalfPageUp,
         Hover,
+        IncrementSelection,
         Indent,
         JoinLines,
         LineDown,

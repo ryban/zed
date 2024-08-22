@@ -184,6 +184,7 @@ impl EditorElement {
         register_action(view, cx, Editor::delete);
         register_action(view, cx, Editor::tab);
         register_action(view, cx, Editor::tab_prev);
+        register_action(view, cx, Editor::increment_selection);
         register_action(view, cx, Editor::indent);
         register_action(view, cx, Editor::outdent);
         register_action(view, cx, Editor::delete_line);
